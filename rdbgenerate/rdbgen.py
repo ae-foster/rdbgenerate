@@ -87,7 +87,8 @@ def convert_fragment(dct):
 
 
 def convert_string(string):
-    assert isinstance(string, bytes)
+    assert isinstance(string, bytes),\
+        "Use Python bytes objects to represent strings"
     length = encode_length(len(string))
     return length + string
 
