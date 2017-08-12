@@ -2,8 +2,9 @@
 Utility for generating Redis dump (.rdb) files from Python native objects
 
 ## Installation
-(TODO)
-You can install this using `pip`?
+You can install this package using `pip`
+
+    pip install rdbgenerate
 
 ## Version support
 `rdbgenerate` is written for Python 3.
