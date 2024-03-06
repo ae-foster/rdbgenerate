@@ -28,22 +28,33 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-from rdbgenerate.crc64 import crc64
+from __future__ import annotations
+
+import os
+from typing import TYPE_CHECKING, BinaryIO, Collection, Mapping, Sequence, Set, Union
+
 import rdbgenerate.constants as const
+from rdbgenerate.crc64 import crc64
+
+if TYPE_CHECKING:
+    REDIS_DATA_TYPES = Union[bytes, Collection[bytes], Mapping[bytes, bytes]]
+    REDIS_DB_TYPE = dict[bytes, REDIS_DATA_TYPES]
 
 
-def rdb_generate(path, redis_version=7, **dbn_to_dict):
+def rdb_generate(
+    path: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]], redis_version: int = 7, **dbn_to_dict: REDIS_DB_TYPE
+) -> None:
     """Converts dictionaries into a redis rdb file"""
-    with open(path, 'wb') as f:
+    with open(path, "wb") as f:
         rdb_generate_io(f, redis_version=redis_version, **dbn_to_dict)
 
 
-def rdb_generate_io(bytesio, redis_version=7, **dbn_to_dict):
+def rdb_generate_io(bytesio: BinaryIO, redis_version: int = 7, **dbn_to_dict: REDIS_DB_TYPE) -> None:
     data_bytes = b""
     for dbn, dct in dbn_to_dict.items():
-        start, n = dbn[:2], dbn[2:]
-        assert start == 'db', "Database numbers should take the form db0"
-        n = int(n)
+        if not dbn.startswith("db") or not dbn[2:].isnumeric():
+            raise ValueError("Database numbers should take the form db0")
+        n = int(dbn[2:])
         if dct:
             data_bytes += convert_db(n, dct)
 
@@ -52,32 +63,31 @@ def rdb_generate_io(bytesio, redis_version=7, **dbn_to_dict):
     bytesio.write(finalized)
 
 
-def convert_db(db, dct):
+def convert_db(db: int, dct: REDIS_DB_TYPE) -> bytes:
     dbn = const.RDB_OPCODE_SELECTDB + bytes([db])
     fragment = convert_fragment(dct)
     return dbn + fragment
 
 
-def convert_fragment(dct):
+def convert_fragment(dct: REDIS_DB_TYPE) -> bytes:
     data_bytes = b""
 
     for key, value in dct.items():
-
         bytes_key = convert_string(key)
 
         # Select data type
         if isinstance(value, bytes):
             typecode = const.RDB_TYPE_STRING
             bytes_value = convert_string(value)
-        elif isinstance(value, set):
+        elif isinstance(value, Set):
             typecode = const.RDB_TYPE_SET
             bytes_value = convert_list(value)
-        elif isinstance(value, list) or isinstance(value, tuple):
-            typecode = const.RDB_TYPE_LIST
-            bytes_value = convert_list(value)
-        elif isinstance(value, dict):
+        elif isinstance(value, Mapping):
             typecode = const.RDB_TYPE_HASH
             bytes_value = convert_hash(value)
+        elif isinstance(value, Sequence):
+            typecode = const.RDB_TYPE_LIST
+            bytes_value = convert_list(value)  # type: ignore[arg-type]
         else:
             raise ValueError("Invalid value in dict {}".format(value))
 
@@ -86,45 +96,42 @@ def convert_fragment(dct):
     return data_bytes
 
 
-def convert_string(string):
-    assert isinstance(string, bytes),\
-        "Use Python bytes objects to represent strings"
+def convert_string(string: bytes) -> bytes:
+    assert isinstance(string, bytes), "Use Python bytes objects to represent strings"
     length = encode_length(len(string))
     return length + string
 
 
-def encode_length(length):
+def encode_length(length: int) -> bytes:
     if length <= 63:
-        return length.to_bytes(1, byteorder='big')
+        return length.to_bytes(1, byteorder="big")
     elif length <= 16383:
         return bytes([64 + length // 256, length % 256])
     else:
-        return b'\x80' + length.to_bytes(4, byteorder='big')
+        return b"\x80" + length.to_bytes(4, byteorder="big")
 
 
-def convert_list(lst):
+def convert_list(lst: Collection[bytes]) -> bytes:
     length = encode_length(len(lst))
-    return length + b''.join([convert_string(s) for s in lst])
+    return length + b"".join([convert_string(s) for s in lst])
 
 
-def convert_hash(hash):
-    length = encode_length(len(hash))
-    return length + b''.join(
-        [convert_string(k)+convert_string(v) for k, v in hash.items()])
+def convert_hash(hash_obj: Mapping[bytes, bytes]) -> bytes:
+    length = encode_length(len(hash_obj))
+    return length + b"".join([convert_string(k) + convert_string(v) for k, v in hash_obj.items()])
 
 
-def wrap_start_end(data_bytes, redis_version=7):
+def wrap_start_end(data_bytes: bytes, redis_version: int = 7) -> bytes:
     # Add preamble
-    version = format(redis_version, '04d').encode('ascii')
-    start = b'REDIS' + version
+    version = format(redis_version, "04d").encode("ascii")
+    start = b"REDIS" + version
 
     end = const.RDB_OPCODE_EOF
 
     data = start + data_bytes + end
 
-    checksum = crc64(data).to_bytes(8, byteorder='little')
+    checksum = crc64(data).to_bytes(8, byteorder="little")
 
     data += checksum
 
     return data
-

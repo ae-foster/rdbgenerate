@@ -28,19 +28,21 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-RDB_TYPE_STRING = b'\x00'
-RDB_TYPE_LIST = b'\x01'
-RDB_TYPE_SET = b'\x02'
-RDB_TYPE_ZSET = b'\x03'
-RDB_TYPE_HASH = b'\x04'
-RDB_TYPE_ZSET_2 = b'\x05' # ZSET version 2 with doubles stored in binary.
+from __future__ import annotations
 
-RDB_TYPE_HASH_ZIPMAP = b'\x09'
-RDB_TYPE_LIST_ZIPLIST = b'\x0a'
-RDB_TYPE_SET_INTSET = b'\x0b'
-RDB_TYPE_ZSET_ZIPLIST = b'\x0c'
-RDB_TYPE_HASH_ZIPLIST= b'\x0d'
-RDB_TYPE_LIST_QUICKLIST = b'\x0e'
+RDB_TYPE_STRING = b"\x00"
+RDB_TYPE_LIST = b"\x01"
+RDB_TYPE_SET = b"\x02"
+RDB_TYPE_ZSET = b"\x03"
+RDB_TYPE_HASH = b"\x04"
+RDB_TYPE_ZSET_2 = b"\x05"  # ZSET version 2 with doubles stored in binary.
 
-RDB_OPCODE_EOF = b'\xff'
-RDB_OPCODE_SELECTDB = b'\xfe'
+RDB_TYPE_HASH_ZIPMAP = b"\x09"
+RDB_TYPE_LIST_ZIPLIST = b"\x0a"
+RDB_TYPE_SET_INTSET = b"\x0b"
+RDB_TYPE_ZSET_ZIPLIST = b"\x0c"
+RDB_TYPE_HASH_ZIPLIST = b"\x0d"
+RDB_TYPE_LIST_QUICKLIST = b"\x0e"
+
+RDB_OPCODE_EOF = b"\xff"
+RDB_OPCODE_SELECTDB = b"\xfe"
