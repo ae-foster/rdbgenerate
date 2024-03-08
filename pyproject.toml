@@ -26,6 +26,7 @@ pytest = "^8.0.2"
 ruff = "^0.3.0"
 isort = "^5.13.2"
 mypy = "^1.8.0"
+black = "^24.2.0"
 
 [build-system]
 requires = ["poetry_core>=1.0.0"]
@@ -34,10 +35,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.isort]
 profile = "black"
 line_length = 120
-py_version = 39
 add_imports = ["from __future__ import annotations"]
 
-[tool.ruff]
+[tool.black]
 line-length = 120
 
 [tool.mypy]
