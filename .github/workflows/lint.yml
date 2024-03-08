@@ -26,4 +26,4 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Lint
-        run: ${{ linter }} src test
+        run: ${{ matrix.linter }} src test
