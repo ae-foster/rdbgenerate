@@ -42,6 +42,8 @@
 
 from __future__ import annotations
 
+from typing import Final
+
 crctab = [
     0x0000000000000000,
     0x7AD870C830358979,
@@ -301,9 +303,10 @@ crctab = [
     0x29B7D047EFEC8728,
 ]
 
+START_CRC: Final[int] = 0
 
-def crc64(data_bytes: bytes, crc: int = 0) -> int:
+
+def crc64(data_bytes: bytes, crc: int = START_CRC) -> int:
     for byte in data_bytes:
         crc = crctab[(crc % 256) ^ byte] ^ (crc >> 8)
-
     return crc

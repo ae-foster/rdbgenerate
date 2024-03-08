@@ -31,48 +31,76 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, BinaryIO, Collection, Mapping, Sequence, Set, Union
+from types import TracebackType
+from typing import TYPE_CHECKING, BinaryIO, Collection, Final, Mapping, Sequence, Set, Union
 
 import rdbgenerate.constants as const
-from rdbgenerate.crc64 import crc64
+from rdbgenerate.crc64 import START_CRC, crc64
 
 if TYPE_CHECKING:
     REDIS_DATA_TYPES = Union[bytes, Collection[bytes], Mapping[bytes, bytes]]
     REDIS_DB_TYPE = dict[bytes, REDIS_DATA_TYPES]
 
 
+DEFAULT_REDIS_VERSION: Final[int] = 7
+
+
 def rdb_generate(
-    path: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]], redis_version: int = 7, **dbn_to_dict: REDIS_DB_TYPE
+    path: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]],
+    redis_version: int = DEFAULT_REDIS_VERSION,
+    **dbn_to_dict: REDIS_DB_TYPE,
 ) -> None:
     """Converts dictionaries into a redis rdb file"""
     with open(path, "wb") as f:
         rdb_generate_io(f, redis_version=redis_version, **dbn_to_dict)
 
 
-def rdb_generate_io(bytesio: BinaryIO, redis_version: int = 7, **dbn_to_dict: REDIS_DB_TYPE) -> None:
-    data_bytes = b""
-    for dbn, dct in dbn_to_dict.items():
-        if not dbn.startswith("db") or not dbn[2:].isnumeric():
-            raise ValueError("Database numbers should take the form db0")
-        n = int(dbn[2:])
-        if dct:
-            data_bytes += convert_db(n, dct)
-
-    finalized = wrap_start_end(data_bytes, redis_version=redis_version)
-
-    bytesio.write(finalized)
-
-
-def convert_db(db: int, dct: REDIS_DB_TYPE) -> bytes:
-    dbn = const.RDB_OPCODE_SELECTDB + bytes([db])
-    fragment = convert_fragment(dct)
-    return dbn + fragment
+def rdb_generate_io(
+    bytesio: BinaryIO,
+    redis_version: int = DEFAULT_REDIS_VERSION,
+    **dbn_to_dict: REDIS_DB_TYPE,
+) -> None:
+    with RDBWriter(bytesio, redis_version=redis_version) as writer:
+        for dbn, dct in dbn_to_dict.items():
+            if not dbn.startswith("db") or not dbn[2:].isnumeric():
+                raise ValueError("Database numbers should take the form db0")
+            n = int(dbn[2:])
+            if dct:
+                writer.write_db(n, dct)
 
 
-def convert_fragment(dct: REDIS_DB_TYPE) -> bytes:
-    data_bytes = b""
+class RDBWriter:
+    def __init__(
+        self, bytesio: BinaryIO, redis_version: int = DEFAULT_REDIS_VERSION
+    ) -> None:
+        self.bytesio: BinaryIO = bytesio
+        self.crc: int = START_CRC
+        self.redis_version: int = redis_version
 
-    for key, value in dct.items():
+    def __enter__(self) -> "RDBWriter":
+        self._write_start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self._write_eof()
+
+    def write_db(self, db: int, dct: REDIS_DB_TYPE | None = None) -> None:
+        self._write_bytes(const.RDB_OPCODE_SELECTDB + bytes([db]))
+        if not dct:
+            return
+        for key, value in dct.items():
+            self.write_fragment(key, value)
+
+    def _write_bytes(self, inp: bytes) -> None:
+        self.crc = crc64(inp, crc=self.crc)
+        self.bytesio.write(inp)
+
+    def write_fragment(self, key: bytes, value: REDIS_DATA_TYPES) -> None:
         bytes_key = convert_string(key)
 
         # Select data type
@@ -91,9 +119,14 @@ def convert_fragment(dct: REDIS_DB_TYPE) -> bytes:
         else:
             raise ValueError("Invalid value in dict {}".format(value))
 
-        data_bytes += typecode + bytes_key + bytes_value
+        self._write_bytes(typecode + bytes_key + bytes_value)
 
-    return data_bytes
+    def _write_start(self) -> None:
+        self._write_bytes(b"REDIS" + format(self.redis_version, "04d").encode("ascii"))
+
+    def _write_eof(self) -> None:
+        self._write_bytes(const.RDB_OPCODE_EOF)
+        self.bytesio.write(self.crc.to_bytes(8, byteorder="little"))
 
 
 def convert_string(string: bytes) -> bytes:
@@ -118,20 +151,6 @@ def convert_list(lst: Collection[bytes]) -> bytes:
 
 def convert_hash(hash_obj: Mapping[bytes, bytes]) -> bytes:
     length = encode_length(len(hash_obj))
-    return length + b"".join([convert_string(k) + convert_string(v) for k, v in hash_obj.items()])
-
-
-def wrap_start_end(data_bytes: bytes, redis_version: int = 7) -> bytes:
-    # Add preamble
-    version = format(redis_version, "04d").encode("ascii")
-    start = b"REDIS" + version
-
-    end = const.RDB_OPCODE_EOF
-
-    data = start + data_bytes + end
-
-    checksum = crc64(data).to_bytes(8, byteorder="little")
-
-    data += checksum
-
-    return data
+    return length + b"".join(
+        [convert_string(k) + convert_string(v) for k, v in hash_obj.items()]
+    )
