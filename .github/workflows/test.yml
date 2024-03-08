@@ -14,13 +14,15 @@ jobs:
           - 'isort --check'
           - 'black --check'
     name: Lint
+    env:
+      PYTHON_VERSION: '3.12'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         id: setup-python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1
         with:
@@ -31,7 +33,7 @@ jobs:
         id: cached-poetry-dependencies
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
@@ -66,7 +68,7 @@ jobs:
         id: cached-poetry-dependencies
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
