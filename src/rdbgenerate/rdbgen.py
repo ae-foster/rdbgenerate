@@ -78,7 +78,7 @@ class RDBWriter:
         self.redis_version: int = redis_version
 
     def __enter__(self) -> "RDBWriter":
-        self._write_start()
+        self._write_header()
         return self
 
     def __exit__(
@@ -121,7 +121,7 @@ class RDBWriter:
 
         self._write_bytes(typecode + bytes_key + bytes_value)
 
-    def _write_start(self) -> None:
+    def _write_header(self) -> None:
         self._write_bytes(b"REDIS" + format(self.redis_version, "04d").encode("ascii"))
 
     def _write_eof(self) -> None:
