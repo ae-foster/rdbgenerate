@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "rdbgenerate"
+version = "0.1.2"
+description = "Generate Redis dump files (.rdb) from native Python objects"
+repository = "https://github.com/ae-foster/rdbgenerate"
+license = "GNU General Public License v3 (GPLv3)"
+authors = ["ae-foster"]
+keywords = ['database', 'redis', 'rdb']
+classifiers = [
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Topic :: Database',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.2"
+ruff = "^0.3.0"
+isort = "^5.13.2"
+mypy = "^1.8.0"
+black = "^24.2.0"
+
+[build-system]
+requires = ["poetry_core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+line_length = 120
+add_imports = ["from __future__ import annotations"]
+
+[tool.black]
+line-length = 120
+
+[tool.mypy]
+strict = true
