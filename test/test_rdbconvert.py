@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from rdbgenerate import rdb_generate_io, RDBWriter
+from rdbgenerate import RDBWriter, rdb_generate_io
 
 if TYPE_CHECKING:
     from rdbgenerate.rdbgen import REDIS_DB_TYPE
@@ -42,10 +42,7 @@ TEST_DATA = [
 ]
 
 
-@pytest.mark.parametrize(
-    "dct,binary",
-    TEST_DATA
-)
+@pytest.mark.parametrize("dct,binary", TEST_DATA)
 def test_rdbgenerate_io(
     dct: REDIS_DB_TYPE,
     binary: bytes,
@@ -58,10 +55,7 @@ def test_rdbgenerate_io(
     assert bytesio.getvalue() == binary
 
 
-@pytest.mark.parametrize(
-    "dct,binary",
-    TEST_DATA
-)
+@pytest.mark.parametrize("dct,binary", TEST_DATA)
 def test_rdbgenerate_stream(
     dct: REDIS_DB_TYPE,
     binary: bytes,

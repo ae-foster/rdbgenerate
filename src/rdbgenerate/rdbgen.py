@@ -70,9 +70,7 @@ def rdb_generate_io(
 
 
 class RDBWriter:
-    def __init__(
-        self, bytesio: BinaryIO, redis_version: int = DEFAULT_REDIS_VERSION
-    ) -> None:
+    def __init__(self, bytesio: BinaryIO, redis_version: int = DEFAULT_REDIS_VERSION) -> None:
         self.bytesio: BinaryIO = bytesio
         self.crc: int = START_CRC
         self.redis_version: int = redis_version
@@ -151,6 +149,4 @@ def convert_list(lst: Collection[bytes]) -> bytes:
 
 def convert_hash(hash_obj: Mapping[bytes, bytes]) -> bytes:
     length = encode_length(len(hash_obj))
-    return length + b"".join(
-        [convert_string(k) + convert_string(v) for k, v in hash_obj.items()]
-    )
+    return length + b"".join([convert_string(k) + convert_string(v) for k, v in hash_obj.items()])
